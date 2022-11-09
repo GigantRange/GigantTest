@@ -74,7 +74,7 @@ class Zuo(object):
   def gen_localtree(self):
     pass
 
-  def search(self, query_range):
+  def gen_token(self, query_range):
     (left_node, right_node) = [bin(self.keyword_list.index(x))[2:].rjust(self.tree_height + 1, "0") for x in query_range]
     BRC_nodes = []
     # self.keyword_list.index(query_range[0])
@@ -90,4 +90,12 @@ class Zuo(object):
       i -= 1
     if left_node == right_node:
       BRC_nodes.append(left_node)
-    print(BRC_nodes)
+    # print(BRC_nodes)
+    return BRC_nodes
+
+  def search(self, token_list):
+    search_result = []
+    for token in token_list:
+      search_result.append(self.edb.get(token))
+    return search_result
+

@@ -14,7 +14,7 @@ case_zuo.gen_edb()
 # print(case_zuo.edb.get("0"))
 
 query_range = [case_zuo.keyword_list[0], case_zuo.keyword_list[4]]
-case_zuo.search(query_range)
+# print(case_zuo.search(case_zuo.gen_token(query_range)))
 
 
 
