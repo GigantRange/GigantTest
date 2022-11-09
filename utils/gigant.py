@@ -65,8 +65,13 @@ class Gigant(object):
 
   def gen_edb(self):
     self.edb = {}
+    for keyword in self.bsdb.keys():
+      self.edb.setdefault(keyword, self.bsdb.get(keyword))
 
-  def gen_token(self):
+  def gen_token(self, query_range):
+    pass
+
+  def __search_tree(self, query_value):
     pass
 
   def search(self):
