@@ -49,6 +49,10 @@ def parse_fileid(bitmap, db_list):
       parse_id.append(db_list[i])
   return parse_id
 
+def gen_random_range(keyword_list, range_size):
+  start_point = random.randrange(0, len(keyword_list) - range_size + 1)
+  return keyword_list[start_point: start_point + range_size]
+
 class Gigant(object):
   """docstring for Gigant"""
   def __init__(self, dbfile, bslength):
@@ -151,8 +155,9 @@ class Gigant(object):
     last_bitmap = list2binary("1" * (self.bslength), self.bslength)
     final_result = []
     (p1, p2) = self.local_position
+    # print(self.local_position)
     if len(search_result) == 0:
-      for file_list in self.cluster_flist[p1, p2 + 1]:
+      for file_list in self.cluster_flist[p1 : p2 + 1]:
         final_result.extend(file_list)
       return final_result
     elif len(search_result) == 2:
@@ -160,30 +165,30 @@ class Gigant(object):
         comp_bitmap = bytearray()
         for x, y in zip(search_result[0], search_result[1]):
           comp_bitmap.append(x ^ y)
-        finall_result.extend(parse_fileid(comp_bitmap[0 : len(self.cluster_flist[p1])], self.cluster_flist[p1]))
-        # final_result.extend(parse_fileid())
+        final_result.extend(parse_fileid(comp_bitmap[0 : len(self.cluster_flist[p1])], self.cluster_flist[p1]))
       else:
         left_bitmap = bytearray()
         for x, y in zip(search_result[0], last_bitmap):
           left_bitmap.append(x ^ y)
         final_result.extend(parse_fileid(left_bitmap, self.cluster_flist[p1]))
-
         right_bitmap = search_result[-1]
         final_result.extend(parse_fileid(right_bitmap, self.cluster_flist[p2]))
-
-        final_result.extend(self.cluster_flist[p1 + 1 : p2])
+        for file_list in self.cluster_flist[p1 + 1 : p2]:
+          final_result.extend(file_list)
+        # final_result.extend(self.cluster_flist[p1 + 1 : p2])
     else:
       if "l" in self.flags:
         left_bitmap = bytearray()
         for x, y in zip(search_result[0], last_bitmap):
-          left_bitmap.append(x ^ y)
-        finall_result.extend(parse_fileid(left_bitmap[0: len(self.cluster_flist[p1])], self.cluster_flist[p1]))
-        finall_result.extend(self.cluster_flist[p1 + 1 : p2 + 1])
+          left_bitmap.append(x ^ y)        
+        final_result.extend(parse_fileid(left_bitmap[0: len(self.cluster_flist[p1])], self.cluster_flist[p1]))
+        for file_list in self.cluster_flist[p1 + 1 : p2 + 1]:
+          final_result.extend(file_list)
+        # final_result.extend(self.cluster_flist[p1 + 1 : p2 + 1])
       if "r" in self.flags:
         right_bitmap = search_result[-1]
-        finall_result.extend(parse_fileid(right_bitmap[0: len(self.cluster_flist[p2])], self.cluster_flist[p2]))
-        final_result.extend(self.cluster_flist[p1: p2])
+        final_result.extend(parse_fileid(right_bitmap[0: len(self.cluster_flist[p2])], self.cluster_flist[p2]))
+        for file_list in self.cluster_flist[p1 : p2]:
+          final_result.extend(file_list)
+        # final_result.extend(self.cluster_flist[p1: p2])
     return final_result
-
-
-
