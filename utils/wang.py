@@ -37,7 +37,15 @@ class Wang(object):
   def gen_token(self, query_range):
     token1 = self.__search_tree(query_range[0], "0")
     token2 = self.__search_tree(query_range[1], "1")
-    return (token1, token2)
+    return (token1, token2)  
+
+  def search(self, token_list):
+    (token1, token2) = token_list
+    result_2 = self.edb.get(token2)
+    result_1 = self.edb.get(token1)
+    # 少一个解密的过程
+    search_result = result_2 - result_1
+    return search_result
 
   def __search_tree(self, query_value, flag):
     # flag == 0: is left bound
@@ -55,11 +63,3 @@ class Wang(object):
       return self.keyword_list[keyword_posi - 1]
       # return int(keyword_node, 2) - 1
     return self.keyword_list[keyword_posi]
-
-  def search(self, token_list):
-    (token1, token2) = token_list
-    result_2 = self.edb.get(token2)
-    result_1 = self.edb.get(token1)
-    # 少一个解密的过程
-    search_result = result_2 - result_1
-    return search_result

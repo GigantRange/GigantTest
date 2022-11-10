@@ -34,10 +34,9 @@ class Zuo(object):
   bslength: the lenght of bitmap
   """
   def __init__(self, dbfile, bslength):
-    with open(dbfile, 'rb') as f:
-      self.db = pickle.load(f)
     self.bslength = bslength
-    self.tokens = []
+    with open(dbfile, 'rb') as f:
+      self.db = pickle.load(f)    
     self.keyword_list = [k for k in self.db.keys()]
     self.keyword_list.sort()
     self.tree_height = math.ceil(math.log(len(self.keyword_list), 2))
@@ -48,34 +47,32 @@ class Zuo(object):
     self.C = pseudo_permutation_P(self.K, self.msg, self.iv)
 
   def gen_edb(self):
-    self.expand_keyword = []
-    self.expand_db = {}
+    self.edb = {}
+    self.localtree = {}
+    expand_db = {}
     for i in range(self.tree_height, -1, -1): # 树节点的数量： 2 ** (height + 1) - 1
       for j in range(2 ** i):
         temp_keyword = bin(j)[2:].rjust(i + 1, "0")
         if i == self.tree_height:
-          self.expand_db.setdefault(temp_keyword, self.db.get(self.keyword_list[j], set()))
+          expand_db.setdefault(temp_keyword, self.db.get(self.keyword_list[j], set()))
         else:
-          temp_fileid = self.expand_db.get(f"{temp_keyword}0") | self.expand_db.get(f"{temp_keyword}1")
-          self.expand_db.setdefault(temp_keyword, temp_fileid)
-    # 开始构建对应的 bitmap 与 edb
-    self.edb = {}
+          temp_fileid = expand_db.get(f"{temp_keyword}0") | expand_db.get(f"{temp_keyword}1")
+          expand_db.setdefault(temp_keyword, temp_fileid)
+    # 开始构建对应的 bitmap 与 edb    
     file_posi = {}
-    file_list = list(self.expand_db.get("0"))
+    file_list = list(expand_db.get("0"))
     for i, j in enumerate(file_list):
       file_posi.setdefault(j, i)
-    for keyword in self.expand_db.keys():
-      bs = gen_bitmap(file_posi, self.expand_db.get(keyword), self.bslength)
+    for keyword in expand_db.keys():
+      bs = gen_bitmap(file_posi, expand_db.get(keyword), self.bslength)
       # 补一个加密 bs
       # 补一个加密 keyword
       self.edb.setdefault(keyword, bs)
     self.edb.setdefault("file_index", file_list)
 
-  def gen_localtree(self):
-    pass
-
   def gen_token(self, query_range):
     (left_node, right_node) = [bin(self.keyword_list.index(x))[2:].rjust(self.tree_height + 1, "0") for x in query_range]
+    # 这里需要重新写一下
     BRC_nodes = []
     # self.keyword_list.index(query_range[0])
     # self.keyword_list.index(query_range[1])
