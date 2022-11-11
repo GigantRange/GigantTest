@@ -1,7 +1,6 @@
 from utils.gigant import Gigant
 from utils.trivial import Direct, gen_random_range
 
-
 case_gigant = Gigant("./dataset/DB/db_512_80k", 1024)
 case_trivia = Direct("./dataset/DB/db_512_80k")
 

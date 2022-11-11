@@ -18,13 +18,10 @@ class Gigant(object):
   def gen_edb(self):
     # gen_edb 包含构建本地二叉树和加密索引两个步骤
     self.localtree = {}
-    # self.cluster = {"flist": [], "klist": []}
-    self.cluster_flist = []
-    # 存储 cluster 中的文件 id
-    self.cluster_klist = []
-    # 存储 cluster 中的关键词内容
     self.edb = {}
-
+    
+    cluster_flist = []  # 存储 cluster 中的文件 id
+    cluster_klist = []  # 存储 cluster 中的关键词内容
     temp_group = []
     temp_value = []
 
@@ -35,26 +32,29 @@ class Gigant(object):
         bit_string = "1" * len(temp_group) + "0" * int(self.bslength - len(temp_group))
         bs = self.__bs2bitmap(bit_string)
         self.edb.setdefault(keyword, bs)
-
         if i == len(self.keyword_list) - 1:
-          self.cluster_flist.append(temp_group.copy())
-          self.cluster_klist.append(temp_value.copy())
+          cluster_flist.append(temp_group.copy())
+          cluster_klist.append(temp_value.copy())
       else:
-        self.cluster_flist.append(temp_group.copy())
-        self.cluster_klist.append(temp_value.copy())
+        cluster_flist.append(temp_group.copy())
+        cluster_klist.append(temp_value.copy())
         temp_group = [*self.db[keyword]]
         temp_value = [keyword]
         bit_string = "1" * len(temp_group) + "0" * int(self.bslength - len(temp_group))
+        # if len(bit_string) > 1024: 
+          # print(len(temp_group))
+          # print(len(self.db.get(keyword)))
+
         bs = self.__bs2bitmap(bit_string)
         self.edb.setdefault(keyword, bs)
 
     del self.keyword_list
     del self.db
 
-    self.cluster_height = math.ceil(math.log(len(self.cluster_flist), 2))
+    self.cluster_height = math.ceil(math.log(len(cluster_flist), 2))
     # gen_list = [ [x[0], x[-1]] for x in self.cluster_klist]
     # padding_list = [ gen_list[-1] for x in range(2 ** self.cluster_height - len(gen_list))]
-    gen_list = [ x[-1] for x in self.cluster_klist]
+    gen_list = [ x[-1] for x in cluster_klist]
     padding_list = [ gen_list[-1] for x in range(2 ** self.cluster_height - len(gen_list))]
     # 此处的 padding_list 也是多余的存储，是否可以去掉？
     gen_list = gen_list + padding_list
@@ -68,14 +68,16 @@ class Gigant(object):
           temp_val = self.localtree.get(temp_keyword + "0" + "1" * (self.cluster_height - i - 1))
           self.localtree.setdefault(temp_keyword, temp_val)
 
+    self.localtree.setdefault("flist", cluster_flist)
+    self.localtree.setdefault("klist", cluster_klist)
+
   def gen_token(self, query_range):
     self.flags = []
     self.local_position = [self.__search_tree(query_range[0]), self.__search_tree(query_range[1])]
     self.server_tokens = []
 
-    local_cluster = self.cluster_klist[self.local_position[0]: self.local_position[1] + 1]
-    # token1 = searchby2(left_cluster, query_range[0], "0")
-    # token2 = searchby2(left_cluster, query_range[0], "1")
+    cluster_klist = self.localtree["klist"]
+    local_cluster = cluster_klist[self.local_position[0]: self.local_position[1] + 1]
     if query_range[0] == local_cluster[0][0] and query_range[1] == local_cluster[-1][-1]:
       # 不需要搜索
       return self.server_tokens
@@ -97,12 +99,13 @@ class Gigant(object):
     return search_result
 
   def local_search(self, search_result):
+    cluster_flist = self.localtree["flist"]
     last_bitmap = self.__bs2bitmap("1" * (self.bslength))
     final_result = []
     (p1, p2) = self.local_position
     # print(self.local_position)
     if len(search_result) == 0:
-      for file_list in self.cluster_flist[p1 : p2 + 1]:
+      for file_list in cluster_flist[p1 : p2 + 1]:
         final_result.extend(file_list)
       return final_result
     elif len(search_result) == 2:
@@ -110,45 +113,40 @@ class Gigant(object):
         comp_bitmap = bytearray()
         for x, y in zip(search_result[0], search_result[1]):
           comp_bitmap.append(x ^ y)
-        final_result.extend(self.__parse_fileid(comp_bitmap[0 : len(self.cluster_flist[p1])], self.cluster_flist[p1]))
+        final_result.extend(self.__parse_fileid(comp_bitmap[0 : len(cluster_flist[p1])], cluster_flist[p1]))
       else:
         left_bitmap = bytearray()
         for x, y in zip(search_result[0], last_bitmap):
           left_bitmap.append(x ^ y)
-        final_result.extend(self.__parse_fileid(left_bitmap, self.cluster_flist[p1]))
+        final_result.extend(self.__parse_fileid(left_bitmap, cluster_flist[p1]))
         right_bitmap = search_result[-1]
-        final_result.extend(self.__parse_fileid(right_bitmap, self.cluster_flist[p2]))
-        for file_list in self.cluster_flist[p1 + 1 : p2]:
+        final_result.extend(self.__parse_fileid(right_bitmap, cluster_flist[p2]))
+        for file_list in cluster_flist[p1 + 1 : p2]:
           final_result.extend(file_list)
-        # final_result.extend(self.cluster_flist[p1 + 1 : p2])
     else:
       if "l" in self.flags:
         left_bitmap = bytearray()
         for x, y in zip(search_result[0], last_bitmap):
           left_bitmap.append(x ^ y)        
-        final_result.extend(self.__parse_fileid(left_bitmap[0: len(self.cluster_flist[p1])], self.cluster_flist[p1]))
-        for file_list in self.cluster_flist[p1 + 1 : p2 + 1]:
+        final_result.extend(self.__parse_fileid(left_bitmap[0: len(cluster_flist[p1])], cluster_flist[p1]))
+        for file_list in cluster_flist[p1 + 1 : p2 + 1]:
           final_result.extend(file_list)
-        # final_result.extend(self.cluster_flist[p1 + 1 : p2 + 1])
       if "r" in self.flags:
         right_bitmap = search_result[-1]
-        final_result.extend(self.__parse_fileid(right_bitmap[0: len(self.cluster_flist[p2])], self.cluster_flist[p2]))
-        for file_list in self.cluster_flist[p1 : p2]:
+        final_result.extend(self.__parse_fileid(right_bitmap[0: len(cluster_flist[p2])], cluster_flist[p2]))
+        for file_list in cluster_flist[p1 : p2]:
           final_result.extend(file_list)
-        # final_result.extend(self.cluster_flist[p1: p2])
     return final_result
 
   def __search_tree(self, query_value):
+    # 对 query_range 的左右进行判断，找到对应的 group
     keyword_node = "0"
     for i in range(0, self.cluster_height):
-      # if query_value > self.localtree.get(keyword_node)[-1]:
       if query_value > self.localtree.get(keyword_node):
         keyword_node += "1"
       else:
         keyword_node += "0"
       keyword_posi = int(keyword_node, 2)
-    # 对 query_range 的左右进行判断，找到对应的 group
-    # return self.cluster_klist[keyword_posi]
     return keyword_posi
 
   def __bs2bitmap(self, bit_string):
