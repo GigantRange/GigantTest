@@ -69,10 +69,10 @@ for db_file in db_list:
 
 data_frame = pd.DataFrame({
   "File Name": n, 
-  "No. of Documents": d, 
-  "No. of Keywords": k,
+  "# of Documents": d, 
+  "# of Keywords": k,
   "Range Bound": range_bound,
-  "Max No. of Docuemnts for a Keyword": max_klength
+  "Max # of Docuemnts for a Keyword": max_klength
   })
 
 data_frame.to_csv("./results/DB_INFO.csv", index=False)

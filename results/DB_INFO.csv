@@ -1,4 +1,4 @@
-File Name,No. of Documents,No. of Keywords,Range Bound,Max No. of Docuemnts for a Keyword
+File Name,# of Documents,# of Keywords,Range Bound,Max # of Docuemnts for a Keyword
 db_512_80k,80000,512,"[-38.1737, 68.3488]",716
 db_1024_80k,80000,1024,"[-43.5736, 69.967]",5679
 db_2048_80k,80000,2048,"[-43.5736, 71.0492]",1650
