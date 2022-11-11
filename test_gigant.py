@@ -18,6 +18,9 @@ search_result = case_gigant.search(tokens)
 final_result = case_gigant.local_search(search_result)
 print(len(final_result))
 
+verify_result = case_trivia.search(query_range)
+print(len(verify_result))
+
 """
 # query_range = [test_range[0], test_range[-1]]
 

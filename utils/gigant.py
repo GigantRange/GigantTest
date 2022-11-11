@@ -33,7 +33,7 @@ class Gigant(object):
         temp_group.extend(self.db[keyword])
         temp_value.append(keyword)
         bit_string = "1" * len(temp_group) + "0" * int(self.bslength - len(temp_group))
-        bs = self.__bs2bitmap(bit_string, self.bslength)
+        bs = self.__bs2bitmap(bit_string)
         self.edb.setdefault(keyword, bs)
 
         if i == len(self.keyword_list) - 1:
@@ -45,8 +45,11 @@ class Gigant(object):
         temp_group = [*self.db[keyword]]
         temp_value = [keyword]
         bit_string = "1" * len(temp_group) + "0" * int(self.bslength - len(temp_group))
-        bs = self.__bs2bitmap(bit_string, self.bslength)
+        bs = self.__bs2bitmap(bit_string)
         self.edb.setdefault(keyword, bs)
+
+    del self.keyword_list
+    del self.db
 
     self.cluster_height = math.ceil(math.log(len(self.cluster_flist), 2))
     # gen_list = [ [x[0], x[-1]] for x in self.cluster_klist]
@@ -94,7 +97,7 @@ class Gigant(object):
     return search_result
 
   def local_search(self, search_result):
-    last_bitmap = self.__bs2bitmap("1" * (self.bslength), self.bslength)
+    last_bitmap = self.__bs2bitmap("1" * (self.bslength))
     final_result = []
     (p1, p2) = self.local_position
     # print(self.local_position)
@@ -148,10 +151,10 @@ class Gigant(object):
     # return self.cluster_klist[keyword_posi]
     return keyword_posi
 
-  def __bs2bitmap(self, bit_string, bslength):
+  def __bs2bitmap(self, bit_string):
     # bslength 是 bits 的个数，因此在转换成 bytes 时需要除以 8
     # 输入的是 bit string，转换后的为一个 bitmap，数据类型为 bytes
-    return int(bit_string, 2).to_bytes(int(bslength / 8), byteorder="big")
+    return int(bit_string, 2).to_bytes(int(self.bslength / 8), byteorder="big")
 
   def __parse_fileid(self, bitmap, db_list):
     parse_id = []

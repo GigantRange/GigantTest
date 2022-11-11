@@ -1,13 +1,16 @@
 from utils.wang import Wang
+from utils.trivial import Direct, gen_random_range
 
 case_wang = Wang("./dataset/DB/db_512_80k")
+case_trivia = Direct("./dataset/DB/db_512_80k")
 
 case_wang.gen_edb()
-case_wang.gen_localtree()
 
 # print(case_wang.localtree.get("0"))
 
-query_range = [case_wang.keyword_list[2], case_wang.keyword_list[251]]
+test_range = gen_random_range(case_trivia.keyword_list, 200)
+query_range = [test_range[0], test_range[-1]]
+print(query_range)
 
 print(case_wang.gen_token(query_range))
 

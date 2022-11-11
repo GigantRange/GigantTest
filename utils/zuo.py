@@ -6,14 +6,6 @@ import random
 import os
 from Crypto.Cipher import AES
 
-def gen_bitmap(db_list, fileid_list, bslength):
-  # bslength means the length of bitmap, that is the number of files.
-  bs_list = ["0" for x in range(bslength)]
-  for fileid in fileid_list:
-    bs_list[db_list.get(fileid)] = "1"
-  bs_string = ''.join(bs_list)
-  return int(bs_string, 2).to_bytes(int(bslength / 8), byteorder="big")
-
 def primitive_hash_h(msg):
   m= hashlib.sha256()
   m.update(msg)
@@ -36,7 +28,7 @@ class Zuo(object):
   def __init__(self, dbfile, bslength):
     self.bslength = bslength
     with open(dbfile, 'rb') as f:
-      self.db = pickle.load(f)    
+      self.db = pickle.load(f)
     self.keyword_list = [k for k in self.db.keys()]
     self.keyword_list.sort()
     self.tree_height = math.ceil(math.log(len(self.keyword_list), 2))
@@ -49,34 +41,40 @@ class Zuo(object):
   def gen_edb(self):
     self.edb = {}
     self.localtree = {}
+
     expand_db = {}
     for i in range(self.tree_height, -1, -1): # 树节点的数量： 2 ** (height + 1) - 1
       for j in range(2 ** i):
         temp_keyword = bin(j)[2:].rjust(i + 1, "0")
         if i == self.tree_height:
           expand_db.setdefault(temp_keyword, self.db.get(self.keyword_list[j], set()))
+          self.localtree.setdefault(temp_keyword, self.keyword_list[j])
         else:
           temp_fileid = expand_db.get(f"{temp_keyword}0") | expand_db.get(f"{temp_keyword}1")
           expand_db.setdefault(temp_keyword, temp_fileid)
+          temp_val = self.localtree.get(temp_keyword + "0" + "1" * (self.tree_height - i - 1))
+          self.localtree.setdefault(temp_keyword, temp_val)
+
     # 开始构建对应的 bitmap 与 edb    
     file_posi = {}
     file_list = list(expand_db.get("0"))
     for i, j in enumerate(file_list):
       file_posi.setdefault(j, i)
     for keyword in expand_db.keys():
-      bs = gen_bitmap(file_posi, expand_db.get(keyword), self.bslength)
+      bs = self.__gen_bitmap(file_posi, expand_db.get(keyword))
       # 补一个加密 bs
       # 补一个加密 keyword
       self.edb.setdefault(keyword, bs)
     self.edb.setdefault("file_index", file_list)
 
+    del self.keyword_list
+    del self.db
+
   def gen_token(self, query_range):
-    (left_node, right_node) = [bin(self.keyword_list.index(x))[2:].rjust(self.tree_height + 1, "0") for x in query_range]
-    # 这里需要重新写一下
+    (left_node, right_node) = [self.__search_tree(x) for x in query_range]
+
     BRC_nodes = []
-    # self.keyword_list.index(query_range[0])
-    # self.keyword_list.index(query_range[1])
-    i = self.tree_height
+    i = self.tree_height + 1
     while int(left_node, 2) < int(right_node, 2):
       if left_node[-1] == "1":
         BRC_nodes.append(left_node)
@@ -87,7 +85,6 @@ class Zuo(object):
       i -= 1
     if left_node == right_node:
       BRC_nodes.append(left_node)
-    # print(BRC_nodes)
     return BRC_nodes
 
   def search(self, token_list):
@@ -96,3 +93,37 @@ class Zuo(object):
       search_result.append(self.edb.get(token))
     return search_result
 
+  def gen_ids(self, search_result):
+    # only for test
+    final_result = set()
+    for bitmap in search_result:
+      temp_result = self.__parse_fileid(bitmap, self.edb.get("file_index"))
+      final_result = final_result | temp_result
+    return final_result
+
+  def __search_tree(self, query_value):
+    keyword_node = "0"
+    for i in range(0, self.tree_height):
+      if query_value <= self.localtree.get(keyword_node):
+        keyword_node += "0"
+      else:
+        keyword_node += "1"
+    return keyword_node
+
+  def __gen_bitmap(self, db_list, fileid_list):
+    # bslength means the length of bitmap, that is the number of files.
+    bs_list = ["0" for x in range(self.bslength)]
+    for fileid in fileid_list:
+      bs_list[db_list.get(fileid)] = "1"
+    bs_string = ''.join(bs_list)
+    return int(bs_string, 2).to_bytes(int(self.bslength / 8), byteorder="big")
+
+  def __parse_fileid(self, bitmap, db_list):
+    parse_id = set()
+    bitmap_list = ''.join([bin(i)[2:].rjust(8, "0") for i in bitmap])
+    for i, j in enumerate(bitmap_list):
+      if i >= len(db_list):
+        break
+      if j == "1":
+        parse_id.add(db_list[i])
+    return parse_id 
