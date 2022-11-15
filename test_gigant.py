@@ -1,3 +1,4 @@
+# 该程序用于验证 gigant 的正确性
 from utils.gigant import Gigant
 from utils.trivial import Direct, gen_random_range
 
@@ -6,35 +7,13 @@ case_trivia = Direct("./dataset/DB/db_512_80k")
 
 case_gigant.gen_edb()
 
-# print(case_gigant.cluster_klist[0])
-# print(type(case_gigant.edb.get(-38.1737)))
+for x in [10, 20, 50, 100, 500]:
+	test_range = gen_random_range(case_trivia.keyword_list, x)
+	# print(test_range)
+	query_range = [test_range[0], test_range[-1]]
+	tokens = case_gigant.gen_token(query_range)
+	search_result = case_gigant.search(tokens)
+	final_result = case_gigant.local_search(search_result)
+	verify_result = case_trivia.search(query_range)
 
-test_range = gen_random_range(case_trivia.keyword_list, 10)
-# print(test_range)
-query_range = [test_range[0], test_range[-1]]
-tokens = case_gigant.gen_token(query_range)
-search_result = case_gigant.search(tokens)
-final_result = case_gigant.local_search(search_result)
-print(len(final_result))
-
-verify_result = case_trivia.search(query_range)
-print(len(verify_result))
-
-"""
-# query_range = [test_range[0], test_range[-1]]
-
-# query_range = [30.3222, 34.0558]
-
-# a = case_gigant.gen_token([-32.0087, 21.9566])
-tokens = case_gigant.gen_token(query_range)
-search_result = case_gigant.search(tokens)
-# print(case_gigant.local_position)
-
-final_result = case_gigant.local_search(search_result)
-print(len(final_result))
-
-# d = case_trivia.search([-32.0087, 21.9566])
-verify_result = case_trivia.search(query_range)
-print(len(verify_result))
-
-"""
+	print(len(final_result) == len(verify_result))
