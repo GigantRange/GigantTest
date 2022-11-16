@@ -6,6 +6,20 @@ import random
 import os
 from Crypto.Cipher import AES
 
+def primitive_hash_h(msg, k):
+  m= hashlib.sha256(k)
+  m.update(msg)
+  hash_msg = m.digest()
+  return hash_msg
+
+def pseudo_permutation_P(key, raw, iv):
+  cipher = AES.new(key,AES.MODE_CBC,iv) #raw must be multiple of 16
+  return cipher.encrypt(raw)
+
+def pseudo_inverse_permutation_P(key, ctext,iv):
+  cipher = AES.new(key,AES.MODE_CBC,iv)
+  return cipher.decrypt(ctext)
+
 class Wang(object):
   """docstring for Wang"""
   def __init__(self, dbfile):
@@ -15,14 +29,20 @@ class Wang(object):
     self.keyword_list.sort()
     self.tree_height = math.ceil(math.log(len(self.keyword_list), 2))
 
+    self.K = os.urandom(16)
+    self.iv = os.urandom(16)
+
   def gen_edb(self):
     self.edb = {}
     self.localtree = {}
 
     self.edb.setdefault("none", set())
     for i, keyword in enumerate(self.keyword_list):
-      self.edb.setdefault(keyword, self.db.get(keyword))
-      if i != 0: self.edb[keyword] = self.edb[keyword].union(self.edb.get(self.keyword_list[i-1]))
+      # 计算 keyword 的哈希
+      hash_keyword = primitive_hash_h(str(keyword).encode("utf-8"), self.K)
+      enc_file_list = [pseudo_permutation_P(self.K, fid.to_bytes(16, byteorder="big"), self.iv) for fid in self.db.get(keyword)]
+      self.edb.setdefault(hash_keyword, set(enc_file_list))
+      if i != 0: self.edb[hash_keyword] = self.edb[hash_keyword].union(self.edb.get(primitive_hash_h(str(self.keyword_list[i-1]).encode("utf-8"), self.K)))
 
     for i in range(self.tree_height, -1, -1):
       for j in range(2 ** i):
@@ -39,14 +59,16 @@ class Wang(object):
   def gen_token(self, query_range):
     token1 = self.__search_tree(query_range[0], "0")
     token2 = self.__search_tree(query_range[1], "1")
-    return (token1, token2)  
+    hash_token1 = primitive_hash_h(str(token1).encode("utf-8"), self.K)
+    hash_token2 = primitive_hash_h(str(token2).encode("utf-8"), self.K)
+    return (hash_token1, hash_token2)
 
   def search(self, token_list):
     (token1, token2) = token_list
     result_2 = self.edb.get(token2)
     result_1 = self.edb.get(token1)
-    # 少一个解密的过程
-    search_result = result_2 - result_1
+    enc_search_result = result_2 - result_1
+    search_result = [pseudo_inverse_permutation_P(self.K, result, self.iv) for result in enc_search_result]
     return search_result
 
   def __search_tree(self, query_value, flag):

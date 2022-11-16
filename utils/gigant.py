@@ -6,6 +6,27 @@ import random
 import os
 from Crypto.Cipher import AES
 
+def primitive_hash_h(msg, k):
+  m= hashlib.sha256(k)
+  m.update(msg)
+  hash_msg = m.digest()
+  return hash_msg
+
+def pseudo_permutation_P(key, raw, iv):
+  cipher = AES.new(key,AES.MODE_CBC,iv) #raw must be multiple of 16
+  return cipher.encrypt(raw)
+
+def pseudo_inverse_permutation_P(key, ctext,iv):
+  cipher = AES.new(key,AES.MODE_CBC,iv)
+  return cipher.decrypt(ctext)
+
+def bxor(b1, b2):
+  assert len(b1) == len(b2)
+  result = bytearray(b1)
+  for i, b in enumerate(b2):
+    result[i] ^= b
+  return bytes(result)
+
 class Gigant(object):
   """docstring for Gigant"""
   def __init__(self, dbfile, bslength):
@@ -14,6 +35,10 @@ class Gigant(object):
       self.db = pickle.load(f)
     self.keyword_list = [k for k in self.db.keys()]
     self.keyword_list.sort()
+
+    self.K = os.urandom(16)
+    self.iv = os.urandom(16)
+    self.keyword2sk = {}
 
   def gen_edb(self):
     # gen_edb 包含构建本地二叉树和加密索引两个步骤
@@ -26,12 +51,17 @@ class Gigant(object):
     temp_value = []
 
     for i, keyword in enumerate(self.keyword_list):
+      # 计算 keyword 的哈希
+      hash_keyword = primitive_hash_h(str(keyword).encode("utf-8"), self.K)
       if len(temp_group) + len(self.db[keyword]) < self.bslength:
         temp_group.extend(self.db[keyword])
         temp_value.append(keyword)
         bit_string = "1" * len(temp_group) + "0" * int(self.bslength - len(temp_group))
         bs = self.__bs2bitmap(bit_string)
-        self.edb.setdefault(keyword, bs)
+        otp_key = secrets.token_bytes(int(self.bslength / 8))
+        enc_bs = bxor(bs, otp_key)
+        self.keyword2sk.setdefault(hash_keyword, otp_key)
+        self.edb.setdefault(hash_keyword, enc_bs)
         if i == len(self.keyword_list) - 1:
           cluster_flist.append(temp_group.copy())
           cluster_klist.append(temp_value.copy())
@@ -41,19 +71,17 @@ class Gigant(object):
         temp_group = [*self.db[keyword]]
         temp_value = [keyword]
         bit_string = "1" * len(temp_group) + "0" * int(self.bslength - len(temp_group))
-        # if len(bit_string) > 1024: 
-          # print(len(temp_group))
-          # print(len(self.db.get(keyword)))
 
         bs = self.__bs2bitmap(bit_string)
-        self.edb.setdefault(keyword, bs)
+        otp_key = secrets.token_bytes(int(self.bslength / 8))
+        enc_bs = bxor(bs, otp_key)
+        self.keyword2sk.setdefault(hash_keyword, otp_key)
+        self.edb.setdefault(hash_keyword, enc_bs)
 
     del self.keyword_list
     del self.db
 
     self.cluster_height = math.ceil(math.log(len(cluster_flist), 2))
-    # gen_list = [ [x[0], x[-1]] for x in self.cluster_klist]
-    # padding_list = [ gen_list[-1] for x in range(2 ** self.cluster_height - len(gen_list))]
     gen_list = [ x[-1] for x in cluster_klist]
     padding_list = [ gen_list[-1] for x in range(2 ** self.cluster_height - len(gen_list))]
     # 此处的 padding_list 也是多余的存储，是否可以去掉？
@@ -90,15 +118,15 @@ class Gigant(object):
       if query_range[1] != local_cluster[-1][-1]:
         self.server_tokens.append(query_range[1])
         self.flags.append("r")
-    return self.server_tokens
+    return [primitive_hash_h(str(t).encode("utf-8"), self.K) for t in self.server_tokens]
 
-  def search(self, token_list):
+  def search(self, tokens_list):
     search_result = []
-    for token in token_list:
+    for token in tokens_list:
       search_result.append(self.edb.get(token))
     return search_result
 
-  def local_search(self, search_result):
+  def local_search(self, search_result, tokens_list):
     cluster_flist = self.localtree["flist"]
     last_bitmap = self.__bs2bitmap("1" * (self.bslength))
     final_result = []
@@ -109,30 +137,40 @@ class Gigant(object):
         final_result.extend(file_list)
       return final_result
     elif len(search_result) == 2:
+      dec_result = []
+      dec_result.append(bxor(self.keyword2sk.get(tokens_list[0]), search_result[0]))
+      dec_result.append(bxor(self.keyword2sk.get(tokens_list[1]), search_result[1]))
+      # print(type(dec_result[0]))
+
       if p1 == p2:
-        comp_bitmap = bytearray()
-        for x, y in zip(search_result[0], search_result[1]):
-          comp_bitmap.append(x ^ y)
+        comp_bitmap = bxor(dec_result[0], dec_result[1])
+        # comp_bitmap = bytearray()
+        # for x, y in zip(dec_result[0], dec_result[1]):
+          # comp_bitmap.append(x ^ y)
         final_result.extend(self.__parse_fileid(comp_bitmap[0 : len(cluster_flist[p1])], cluster_flist[p1]))
+        # print(comp_bitmap)
       else:
-        left_bitmap = bytearray()
-        for x, y in zip(search_result[0], last_bitmap):
-          left_bitmap.append(x ^ y)
+        left_bitmap = bxor(dec_result[0], last_bitmap)
+        # left_bitmap = bytearray()
+        # for x, y in zip(dec_result[0], last_bitmap):
+          # left_bitmap.append(x ^ y)
         final_result.extend(self.__parse_fileid(left_bitmap, cluster_flist[p1]))
-        right_bitmap = search_result[-1]
+        right_bitmap = dec_result[-1]
         final_result.extend(self.__parse_fileid(right_bitmap, cluster_flist[p2]))
         for file_list in cluster_flist[p1 + 1 : p2]:
           final_result.extend(file_list)
     else:
+      dec_result = [bxor(self.keyword2sk.get(tokens_list[0]), search_result[0])]
       if "l" in self.flags:
-        left_bitmap = bytearray()
-        for x, y in zip(search_result[0], last_bitmap):
-          left_bitmap.append(x ^ y)        
+        left_bitmap = bxor(dec_result[0], last_bitmap)
+        # left_bitmap = bytearray()
+        # for x, y in zip(dec_result[0], last_bitmap):
+          # left_bitmap.append(x ^ y)        
         final_result.extend(self.__parse_fileid(left_bitmap[0: len(cluster_flist[p1])], cluster_flist[p1]))
         for file_list in cluster_flist[p1 + 1 : p2 + 1]:
           final_result.extend(file_list)
       if "r" in self.flags:
-        right_bitmap = search_result[-1]
+        right_bitmap = dec_result[-1]
         final_result.extend(self.__parse_fileid(right_bitmap[0: len(cluster_flist[p2])], cluster_flist[p2]))
         for file_list in cluster_flist[p1 : p2]:
           final_result.extend(file_list)

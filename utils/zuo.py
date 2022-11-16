@@ -6,8 +6,8 @@ import random
 import os
 from Crypto.Cipher import AES
 
-def primitive_hash_h(msg):
-  m= hashlib.sha256()
+def primitive_hash_h(msg, k):
+  m= hashlib.sha256(k)
   m.update(msg)
   hash_msg = m.digest()
   return hash_msg
@@ -19,6 +19,13 @@ def pseudo_permutation_P(key, raw, iv):
 def pseudo_inverse_permutation_P(key, ctext,iv):
   cipher = AES.new(key,AES.MODE_CBC,iv)
   return cipher.decrypt(ctext)
+
+def bxor(b1, b2):
+  assert len(b1) == len(b2)
+  result = bytearray(b1)
+  for i, b in enumerate(b2):
+    result[i] ^= b
+  return bytes(result)
 
 class Zuo(object):
   """docstring for zuo
@@ -35,8 +42,7 @@ class Zuo(object):
 
     self.K = os.urandom(16)
     self.iv = os.urandom(16)
-    self.msg = primitive_hash_h(bytes("test", "utf-8"))
-    self.C = pseudo_permutation_P(self.K, self.msg, self.iv)
+    self.keyword2sk = {}
 
   def gen_edb(self):
     self.edb = {}
@@ -61,11 +67,15 @@ class Zuo(object):
     for i, j in enumerate(file_list):
       file_posi.setdefault(j, i)
     for keyword in expand_db.keys():
+      # 计算 keyword 的哈希
+      hash_keyword = primitive_hash_h(keyword.encode("utf-8"), self.K)
       bs = self.__gen_bitmap(file_posi, expand_db.get(keyword))
-      # 补一个加密 bs
-      # 补一个加密 keyword
-      self.edb.setdefault(keyword, bs)
-    self.edb.setdefault("file_index", file_list)
+      otp_key = secrets.token_bytes(int(self.bslength / 8))
+      enc_bs = bxor(bs, otp_key)
+      self.edb.setdefault(hash_keyword, enc_bs)
+      self.keyword2sk.setdefault(hash_keyword, otp_key) # only for test, not used in real applications
+    enc_file_list = [pseudo_permutation_P(self.K, fid.to_bytes(16, byteorder="big"), self.iv) for fid in file_list]
+    self.edb.setdefault("file_index", enc_file_list)
 
     del self.keyword_list
     del self.db
@@ -85,7 +95,11 @@ class Zuo(object):
       i -= 1
     if left_node == right_node:
       BRC_nodes.append(left_node)
-    return BRC_nodes
+    tokens_list = []
+    for keyword in BRC_nodes:
+      hash_keyword = primitive_hash_h(keyword.encode("utf-8"), self.K)
+      tokens_list.append(hash_keyword)
+    return tokens_list
 
   def search(self, token_list):
     search_result = []
@@ -93,13 +107,15 @@ class Zuo(object):
       search_result.append(self.edb.get(token))
     return search_result
 
-  def gen_ids(self, search_result):
+  def gen_ids(self, search_result, tokens_list):
     # only for test
     final_result = set()
-    for bitmap in search_result:
+    for i, enc_bitmap in enumerate(search_result):
+      otp_key = self.keyword2sk.get(tokens_list[i])
+      bitmap = bxor(enc_bitmap, otp_key)
       temp_result = self.__parse_fileid(bitmap, self.edb.get("file_index"))
       final_result = final_result | temp_result
-    return final_result
+    return [pseudo_inverse_permutation_P(self.K, result, self.iv) for result in final_result]
 
   def __search_tree(self, query_value):
     keyword_node = "0"

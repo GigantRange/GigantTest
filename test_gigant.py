@@ -9,11 +9,9 @@ case_gigant.gen_edb()
 
 for x in [10, 20, 50, 100, 500]:
 	test_range = gen_random_range(case_trivia.keyword_list, x)
-	# print(test_range)
 	query_range = [test_range[0], test_range[-1]]
 	tokens = case_gigant.gen_token(query_range)
 	search_result = case_gigant.search(tokens)
-	final_result = case_gigant.local_search(search_result)
+	final_result = case_gigant.local_search(search_result, tokens)
 	verify_result = case_trivia.search(query_range)
-
 	print(len(final_result) == len(verify_result))

@@ -10,8 +10,8 @@ case_zuo.gen_edb()
 for x in [10, 20, 50, 100, 500]:
 	test_range = gen_random_range(case_trivia.keyword_list, x)
 	query_range = [test_range[0], test_range[-1]]
-	search_result = case_zuo.search(case_zuo.gen_token(query_range))
-	final_result = case_zuo.gen_ids(search_result)
+	search_token = case_zuo.gen_token(query_range)
+	search_result = case_zuo.search(search_token)
+	final_result = case_zuo.gen_ids(search_result, search_token)
 	verify_result = case_trivia.search(query_range)
-
 	print(len(final_result) == len(verify_result))
