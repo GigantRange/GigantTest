@@ -77,8 +77,8 @@ class Zuo(object):
     enc_file_list = [pseudo_permutation_P(self.K, fid.to_bytes(16, byteorder="big"), self.iv) for fid in file_list]
     self.edb.setdefault("file_index", enc_file_list)
 
-    del self.keyword_list
-    del self.db
+    # del self.keyword_list
+    # del self.db
 
   def gen_token(self, query_range):
     (left_node, right_node) = [self.__search_tree(x) for x in query_range]

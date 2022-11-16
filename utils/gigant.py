@@ -78,8 +78,8 @@ class Gigant(object):
         self.keyword2sk.setdefault(hash_keyword, otp_key)
         self.edb.setdefault(hash_keyword, enc_bs)
 
-    del self.keyword_list
-    del self.db
+    # del self.keyword_list
+    # del self.db
 
     self.cluster_height = math.ceil(math.log(len(cluster_flist), 2))
     gen_list = [ x[-1] for x in cluster_klist]

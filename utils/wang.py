@@ -53,8 +53,8 @@ class Wang(object):
           temp_val = self.localtree.get(temp_keyword + "0" + "1" * (self.tree_height - i - 1))
           self.localtree.setdefault(temp_keyword, temp_val)
 
-    del self.db
-    del self.keyword_list
+    # del self.db
+    # del self.keyword_list
 
   def gen_token(self, query_range):
     token1 = self.__search_tree(query_range[0], "0")
