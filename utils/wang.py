@@ -65,8 +65,8 @@ class Wang(object):
 
   def search(self, token_list):
     (token1, token2) = token_list
-    result_2 = self.edb.get(token2)
-    result_1 = self.edb.get(token1)
+    result_2 = self.edb.get(token2, set())
+    result_1 = self.edb.get(token1, set())
     enc_search_result = result_2 - result_1
     search_result = [pseudo_inverse_permutation_P(self.K, result, self.iv) for result in enc_search_result]
     return search_result

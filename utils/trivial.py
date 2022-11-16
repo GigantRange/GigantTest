@@ -3,7 +3,8 @@ import random
 
 def gen_random_range(keyword_list, range_size):
   start_point = random.randrange(0, len(keyword_list) - range_size + 1)
-  return keyword_list[start_point: start_point + range_size]
+  search_range = keyword_list[start_point: start_point + range_size]
+  return [search_range[0], search_range[-1]]
 
 class Direct(object):
   """docstring for Direct"""
