@@ -10,9 +10,11 @@ from utils.zuo import Zuo
 from utils.gigant import Gigant
 from utils.trivial import gen_random_range, Direct
 
-test_keyword_number = [512, 1024, 2048, 4096, 8192]
+# test_keyword_number = [512, 1024, 2048, 4096, 8192]
+# test_keyword_number = [512, 1024, 2048, 4096]
+test_keyword_number = [8192]
 file_number = 80
-epoch = 10
+epoch = 1
 
 setup_time = {"gigant": [], "wang": [], "zuo": []}
 
@@ -33,10 +35,14 @@ for keyword_number in test_keyword_number:
 
 	# print(len(case_gigant.keyword_list))
 
-	setup_time["gigant"].append(test_setup_time(case_gigant, epoch))
-	setup_time["wang"].append(test_setup_time(case_wang, epoch))
-	setup_time["zuo"].append(test_setup_time(case_zuo, epoch))
+	print(test_setup_time(case_wang, epoch))
 
+	# setup_time["gigant"].append(test_setup_time(case_gigant, epoch))
+	# setup_time["wang"].append(test_setup_time(case_wang, epoch))
+	# setup_time["wang"].append("timeout")
+	# setup_time["zuo"].append(test_setup_time(case_zuo, epoch))
+
+"""
 data_frame = pd.DataFrame({
 	"Keyword Number": test_keyword_number,
 	"Our Proposed Scheme": setup_time["gigant"],
@@ -44,4 +50,5 @@ data_frame = pd.DataFrame({
 	"FBDSSE-RQ": setup_time["zuo"]
 	})
 
-data_frame.to_csv(f"./results/TEST1_SETUP_{file_number}k.csv", index=False)
+data_frame.to_csv(f"./results/TEST1_SETUP_8192_{file_number}k.csv", index=False)
+"""

@@ -36,13 +36,22 @@ class Wang(object):
     self.edb = {}
     self.localtree = {}
 
-    self.edb.setdefault("none", set())
+    self.edb.setdefault(primitive_hash_h("none".encode("utf-8"), self.K), set())
     for i, keyword in enumerate(self.keyword_list):
       # 计算 keyword 的哈希
       hash_keyword = primitive_hash_h(str(keyword).encode("utf-8"), self.K)
       enc_file_list = [pseudo_permutation_P(self.K, fid.to_bytes(16, byteorder="big"), self.iv) for fid in self.db.get(keyword)]
       self.edb.setdefault(hash_keyword, set(enc_file_list))
-      if i != 0: self.edb[hash_keyword] = self.edb[hash_keyword].union(self.edb.get(primitive_hash_h(str(self.keyword_list[i-1]).encode("utf-8"), self.K)))
+      if i != 0: 
+        self.edb[hash_keyword] = self.edb[hash_keyword].union(self.edb.get(primitive_hash_h(str(self.keyword_list[i-1]).encode("utf-8"), self.K)))
+
+        # if i > 8000:
+          # with open("./temp", 'wb') as f:
+            # pickle.dump(self.edb[primitive_hash_h(str(self.keyword_list[i-1]).encode("utf-8"), self.K)], f)
+          # del self.edb[primitive_hash_h(str(self.keyword_list[i-1]).encode("utf-8"), self.K)]
+
+    # del self.edb
+    # del self.db
 
     for i in range(self.tree_height, -1, -1):
       for j in range(2 ** i):
@@ -54,7 +63,7 @@ class Wang(object):
           self.localtree.setdefault(temp_keyword, temp_val)
 
     # del self.db
-    # del self.keyword_list
+    del self.keyword_list
 
   def gen_token(self, query_range):
     token1 = self.__search_tree(query_range[0], "0")
@@ -65,8 +74,8 @@ class Wang(object):
 
   def search(self, token_list):
     (token1, token2) = token_list
-    result_2 = self.edb.get(token2, set())
-    result_1 = self.edb.get(token1, set())
+    result_2 = self.edb.get(token2)
+    result_1 = self.edb.get(token1)
     enc_search_result = result_2 - result_1
     search_result = [pseudo_inverse_permutation_P(self.K, result, self.iv) for result in enc_search_result]
     return search_result
