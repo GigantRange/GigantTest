@@ -44,14 +44,11 @@ class Gigant(object):
     # gen_edb 包含构建本地二叉树和加密索引两个步骤
     self.localtree = {}
     self.edb = {}
-    self.cluster_flist = []
     
     cluster_flist = []  # 存储 cluster 中的文件 id
     cluster_klist = []  # 存储 cluster 中的关键词内容
-    cluster_volume = [] # 存储 cluster 中 bitmap 的偏移量，以及 flist 的 length， offset = index * L
     temp_group = []
     temp_value = []
-    # temp_volume = 0
 
     for i, keyword in enumerate(self.keyword_list):
       # 计算 keyword 的哈希
@@ -68,11 +65,9 @@ class Gigant(object):
         if i == len(self.keyword_list) - 1:
           cluster_flist.append(temp_group.copy())
           cluster_klist.append(temp_value.copy())
-          cluster_volume.append(len(temp_group))
       else:
         cluster_flist.append(temp_group.copy())
         cluster_klist.append(temp_value.copy())
-        cluster_volume.append(len(temp_group))
         temp_group = [*self.db[keyword]]
         temp_value = [keyword]
         bit_string = "1" * len(temp_group) + "0" * int(self.bslength - len(temp_group))
@@ -101,9 +96,7 @@ class Gigant(object):
           temp_val = self.localtree.get(temp_keyword + "0" + "1" * (self.cluster_height - i - 1))
           self.localtree.setdefault(temp_keyword, temp_val)
 
-    self.cluster_flist = cluster_flist
-    # self.localtree.setdefault("flist", cluster_flist) # 这一行应该不需要了
-    self.localtree.setdefault("volume", cluster_volume)
+    self.localtree.setdefault("flist", cluster_flist)
     self.localtree.setdefault("klist", cluster_klist)
 
   def gen_token(self, query_range):
@@ -134,8 +127,7 @@ class Gigant(object):
     return search_result
 
   def local_search(self, search_result, tokens_list):
-    # cluster_flist = self.localtree["flist"]
-    cluster_flist = self.cluster_flist
+    cluster_flist = self.localtree["flist"]
     last_bitmap = self.__bs2bitmap("1" * (self.bslength))
     final_result = []
     (p1, p2) = self.local_position

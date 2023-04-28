@@ -10,14 +10,14 @@ file_number = 80
 for keyword_number in test_keyword_number:
   db_file = f"./dataset/DB/db_{keyword_number}_{file_number}k"
 
-  """ TEST for gigant
+  # """ TEST for gigant
   case_gigant = Gigant(db_file, 6264)
   case_gigant.gen_edb()
-  with open(f"./dataset/EDB2/gigant/edb_{keyword_number}_{file_number}k", 'wb') as f:
+  with open(f"./dataset/EDB3/gigant/edb_{keyword_number}_{file_number}k", 'wb') as f:
     pickle.dump(case_gigant.edb, f)
-  with open(f"./dataset/EDB2/gigant/local_{keyword_number}_{file_number}k", 'wb') as f:
+  with open(f"./dataset/EDB3/gigant/local_{keyword_number}_{file_number}k", 'wb') as f:
     pickle.dump(case_gigant.localtree, f)
-  """
+  # """
 
   """
   case_zuo = Zuo(db_file, file_number * 1000)
@@ -28,12 +28,14 @@ for keyword_number in test_keyword_number:
     pickle.dump(case_zuo.localtree, f)
   """
 
+  """
   case_wang = Wang(db_file)
   case_wang.gen_edb()
   with open(f"./dataset/EDB2/wang/edb_{keyword_number}_{file_number}k", 'wb') as f:
     pickle.dump(case_wang.edb, f)
   with open(f"./dataset/EDB2/wang/local_{keyword_number}_{file_number}k", 'wb') as f:
     pickle.dump(case_wang.localtree, f)
+  """
 
 
 
